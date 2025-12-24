@@ -1,8 +1,8 @@
 # How to create DXF files
 
-<img src="images/cover_view.jpg" height="500" alt="Scaled with correct aspect ratio)">
+<img src="images/cover_view.png" height="500" alt="Scaled with correct aspect ratio)">
 
-<img src="images/top_view.jpg" height="500" alt="Scaled with correct aspect ratio)">
+<img src="images/top_view.png" height="500" alt="Scaled with correct aspect ratio)">
 
 
 ## Install FreeCAD (1.0)
