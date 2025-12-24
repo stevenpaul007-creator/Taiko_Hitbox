@@ -1,8 +1,8 @@
 # How to create DXF files
 
- ![](images/cover_view.jpg )
+ ![](AcrylicBox/images/cover_view.jpg )
  
- ![](images/top_view.jpg )
+ ![](AcrylicBox/images/top_view.jpg )
 
 ## Install FreeCAD (1.0)
 Just Google it.
