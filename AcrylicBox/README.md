@@ -1,8 +1,9 @@
 # How to create DXF files
 
- ![](AcrylicBox/images/cover_view.jpg )
- 
- ![](AcrylicBox/images/top_view.jpg )
+<img src="AcrylicBox/images/cover_view.jpg" height="500" alt="Scaled with correct aspect ratio)">
+
+<img src="AcrylicBox/images/top_view.jpg" height="500" alt="Scaled with correct aspect ratio)">
+
 
 ## Install FreeCAD (1.0)
 Just Google it.
