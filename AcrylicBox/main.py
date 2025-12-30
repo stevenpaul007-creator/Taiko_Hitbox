@@ -5,7 +5,7 @@ import Draft
 import importDXF  # 专门负责 DWG 导出的模块
 import os
 
-Gui.runCommand('Std_CloseAllWindows',0)
+App.closeDocument("Taiko_Hitbox_Acrylic_Pro")
 
 # 顶层覆盖板螺丝孔是否需要沉头 部分厂商不支持沉头
 CSK_ENABLE = False
@@ -16,21 +16,42 @@ EXPORT_DXF_FOLDER = "d:/temp/export"
 # --- 1. 参数定义 (单位: mm) ---
 L = 200.0  # 长度 (X)
 W = 100.0  # 宽度 (Y)
-T = 3.0    # 亚克力厚度
-T_COVER = 2.0   # 面板厚度
+T = 2.9    # 亚克力厚度
+T_COVER = 1.9   # 面板厚度
 SUPPORT_H = 40  # 支撑高度
 H = SUPPORT_H + 2*T + T_COVER   # 总高度 (Z)
 
 M3_HOLE = 3.2  # M3螺丝孔径 (略大一点方便穿过)
 
+PCB_L = 96.0 # PCB长度
+PCB_DEPTH = 1.6 # PCB厚度
+PCB_UNDER = 4.0   # PCB支撑高度（4MM螺母）
+
+USB_A_L = 15.2
+USB_A_H = 10.0
+
+#USB 口中心点位置（在顶部支撑上）
+# PCB底部距离原点4mm，PCB厚度1.6mm，PCB顶部在5.6mm
+# USB口中心应该在PCB顶部附近
+USB_POSITIONS = [
+    (L/2 - (PCB_L/2)+19.2 * 1, PCB_UNDER + PCB_DEPTH + 1.2),   # USB中心在PCB顶部
+    (L/2 - (PCB_L/2)+19.2 * 2, PCB_UNDER + PCB_DEPTH + 1.2),   # USB中心在PCB顶部
+    (L/2 - (PCB_L/2)+19.2 * 3, PCB_UNDER + PCB_DEPTH + 1.2),   # USB中心在PCB顶部
+    (L/2 - (PCB_L/2)+19.2 * 4, PCB_UNDER + PCB_DEPTH + 1.2),   # USB中心在PCB顶部
+]
+
 # 按键参数
 MAIN_D = 24.0      # 主按键直径
 FUNC_D = 12.0      # 功能键直径
 SLOT_W = T         # 榫槽宽度即板厚
-SLOT_L = 20.0      # 榫槽长度
+SLOT_L = 30.0      # 榫槽长度
+LED_HOLE_W = 10.0  # led的边长
+
+# 螺丝与边的距离
+SCREW_MARGIN = 10.0
 
 # 开孔公差
-CUT_COMM = 0.2
+CUT_COMM = 0.0
 
 # --- 2. 创建文档 ---
 doc = App.newDocument("Taiko_Hitbox_Acrylic_Pro")
@@ -38,11 +59,14 @@ doc = App.newDocument("Taiko_Hitbox_Acrylic_Pro")
 # --- 3. 核心布局坐标 ---
 # 8个螺丝孔位置 (四角 + 四边中点)
 screw_points = [
-    (12, 12),      (L/2, 12 +6),     (L-12, 12),
-    (12 + 6, W/2), (L/2, W/2+12),       (L-12 - 6, W/2),
-    #              (L/2, W/2), 
-    #(12, W-12),    (L/2, W-12 - 6),  (L-12, W-12)
-    (12, W-12),                      (L-12, W-12)
+    (SCREW_MARGIN, SCREW_MARGIN),      (L/2, SCREW_MARGIN +6),     (L-SCREW_MARGIN, SCREW_MARGIN),
+    #(SCREW_MARGIN + 6, W/2),           (L/2, W/2+SCREW_MARGIN),       (L-SCREW_MARGIN - 6, W/2),
+    #                                   (L/2, W/2+SCREW_MARGIN),
+    (SCREW_MARGIN, W-SCREW_MARGIN),                                (L-SCREW_MARGIN, W-SCREW_MARGIN)
+]
+screws_pcb = [
+    (L/2 - (PCB_L/2 - 5), W -SCREW_MARGIN- T/2 - 5),              (L/2 + (PCB_L/2 - 5), W -SCREW_MARGIN- T/2 - 5),
+    (L/2 - (PCB_L/2 - 5), W -SCREW_MARGIN- T/2 -(36 - 5)),        (L/2 + (PCB_L/2 - 5), W -SCREW_MARGIN- T/2 -(36 - 5))
 ]
 
 # 沉头孔参数 (2025 标准 M3 螺丝)
@@ -80,9 +104,14 @@ f_rt = (L - 23, W-23)
 func_btns = [f_u, f_r, f_x, f_y, f_start, f_lt, f_rt]
 # ////////////功能键位置结束///////////
 
+# ////////////LED HOLE///////////////
+LED_L = (f_u[0] - LED_HOLE_W / 2 - 5, f_lt[1])
+LED_R = (f_y[0] - LED_HOLE_W / 2 + 5, f_lt[1])
+LED_HOLES = [LED_L, LED_R]
+# ///////////////////////////////////
 
 # 支撑板位置 (横向两条，避开按键)
-support_x_positions = [L*0.2,  L/2, L*0.8]
+support_x_positions = [L*0.2,  L*0.8]
 support_y_positions = [10, W - 10]
 
 # 支撑板位置 (纵向两条，避开按键)
@@ -157,7 +186,21 @@ def create_main_panel(z_pos, mode="middle"):
             func_h = Part.makeCylinder(FUNC_D/2 + CUT_COMM, t*2)
             func_h.translate(App.Vector(fp[0], fp[1], -t/2))
             panel = panel.cut(func_h)
-            
+    # HOLE FOR LED
+    if mode in ["middle"]:
+        for led in LED_HOLES:
+            led_hole = Part.makeBox(LED_HOLE_W, LED_HOLE_W, T*2)
+            led_hole.translate(App.Vector(led[0], led[1], -t/2))
+            panel = panel.cut(led_hole)
+
+    # holes for pcb
+    if mode in ["bottom"]:
+        for p in screws_pcb:
+            # 基础贯穿孔
+            hole = Part.makeCylinder(4.0/2, t*2)
+            hole.translate(App.Vector(p[0], p[1], -t/2))
+            panel = panel.cut(hole)
+
     panel = panel.removeSplitter()
     # 5. 生成对象
     obj = doc.addObject("Part::Feature", f"Panel_{mode}")
@@ -175,8 +218,8 @@ def create_main_panel(z_pos, mode="middle"):
 
 # --- 5.1 函数：创建横向支撑板 ---
 def create_support(y_pos):
-    # 螺丝孔避让距离：螺丝孔在 12mm 处，我们从 25mm 开始到 L-25mm 结束
-    margin_x = 23.0 
+    # 螺丝孔避让距离
+    margin_x = SCREW_MARGIN + 4 
 
     # 支撑板主体尺寸
     s_length = L  - 2 * margin_x  # 比总长稍短，避免干涉圆角
@@ -185,7 +228,7 @@ def create_support(y_pos):
     # 1. 创建主体（默认在 XY 平面，厚度为 T）
     # 我们先在本地坐标系画：X=长度, Y=高度, Z=厚度
     support = Part.makeBox(s_length, s_height, T)
-    
+
     # 将主体移动到居中位置，方便后续旋转和定位
     support.translate(App.Vector(margin_x, 0, 0))
     
@@ -201,17 +244,20 @@ def create_support(y_pos):
         tenon_top = Part.makeBox(SLOT_L, T, T)
         tenon_top.translate(App.Vector(sx - SLOT_L/2, s_height, 0))
         support = support.fuse(tenon_top)
-
-    # 上面的支撑需要开USB和开关
-    if y_pos >= W / 2:
-        v_usb = Part.makeBox(12.2 + CUT_COMM, 5.5 + CUT_COMM, T*2)
-        v_usb.translate(App.Vector(s_length *0.4, s_height/3, -T/2))
-        support = support.cut(v_usb)
-
-        v_power = Part.makeCylinder(FUNC_D/2 + CUT_COMM, T*2)
-        v_power.translate(App.Vector(s_length *0.8, s_height/3, -T/2))
-        support = support.cut(v_power)
     
+    # 上面的支撑需要开USB
+    if y_pos >= W / 2:
+        for p in USB_POSITIONS:
+            v_usb = Part.makeBox(USB_A_L + CUT_COMM, USB_A_H + CUT_COMM, T*2)
+            # 将开孔的中心放在 p（全局坐标），不再减去 margin_x
+            v_usb.translate(App.Vector(
+                p[0] - (USB_A_L + CUT_COMM)/2,
+                p[1] - (USB_A_H + CUT_COMM)/2,
+                -T/2))
+            # 对USB开孔做圆角，避免锋利棱角
+            v_usb = v_usb.makeFillet(1.0, v_usb.Edges)
+            support = support.cut(v_usb)
+
     support = support.removeSplitter()
 
     # 3. 旋转和定位
@@ -231,7 +277,7 @@ def create_support(y_pos):
 def create_side_support(x_pos):
     # 纵向板长度：避开横向支撑板的厚度
     # 横向板在 y=12 和 y=88，所以纵向板长度设为 60mm 左右
-    s_length_y = W - 40.0 
+    s_length_y = W - (SCREW_MARGIN * 2 + 4*2) 
     s_height = SUPPORT_H
     
     # 1. 创建主体 (在 XY 平面，长边沿 Y 轴)
@@ -328,3 +374,4 @@ if EXPORT_DXF_ENABLE:
         print(f"已导出: {file_full_path}")
 
 doc.recompute()
+
