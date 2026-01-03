@@ -1,3 +1,5 @@
+// libs: https://github.com/stevenpaul007-creator/CH55xSwitchControl
+
 #include <CH55xSwitchControl.h>
 
 #define ButtonNum 12
